@@ -22,3 +22,5 @@ Screenmate AI is a desktop assistant built with C# and WPF.
 - OpenAI API
 - .NET
 
+- Support me on Ko-fi: Ko-fi.com/erickgooglemailcom
+
