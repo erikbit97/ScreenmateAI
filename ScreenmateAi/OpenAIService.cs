@@ -14,11 +14,12 @@ namespace ChatGPTWPF.Services
     public class OpenAIService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiKey = ""; //Hier deinen OpenAI API-Key eintragen        
+        private readonly string _apiKey; //Hier deinen OpenAI API-Key eintragen        
 
         public OpenAIService()
         {
             _httpClient = new HttpClient();
+            _apiKey = File.ReadAllText("apikey.txt").Trim();
         }
 
         public async Task<string> SendMessageAsync(List<ChatMessage> messages)

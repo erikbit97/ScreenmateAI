@@ -1,6 +1,7 @@
 ﻿using ChatGPTWPF.Services;
 using ScreenmateAi;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,6 +22,9 @@ namespace ChatGPTWPF
         private List<ChatMessage> _chatHistory = new List<ChatMessage>();
         private DispatcherTimer _liveTimer;
 
+        private readonly string _settingsPath = "settings.json";
+        private bool _Justchatting = false;
+
         private bool _isLiveAnalyzing = false;
         private bool _isLiveModeActive = false;
 
@@ -38,8 +42,9 @@ namespace ChatGPTWPF
             _aiService = new OpenAIService();
             _liveTimer = new DispatcherTimer();
             _chatStorageService = new ChatStorageService();
-
+            LoadScreensIntoComboBox();
             LoadConversations();
+            loadJustchattingsetting();
             _liveTimer.Interval = TimeSpan.FromSeconds(5);
 
             _liveTimer.Tick += LiveTimer_Tick;
@@ -63,11 +68,49 @@ namespace ChatGPTWPF
             }
         }
 
+        private void LoadScreensIntoComboBox()
+        {
+            screens.Items.Clear();
+
+            for (int i = 0; i < System.Windows.Forms.Screen.AllScreens.Length; i++)
+            {
+                System.Windows.Forms.Screen screen =
+                    System.Windows.Forms.Screen.AllScreens[i];
+
+                screens.Items.Add($"Monitor {i + 1} - {screen.Bounds.Width}x{screen.Bounds.Height}");
+            }
+
+            if (screens.Items.Count > 0)
+            {
+                screens.SelectedIndex = 0;
+            }
+        }
         private void SaveConversations()
         {
             _chatStorageService.Save(_conversations);
         }
 
+        private void LoadScreenshotsin_Livescreenshotpaths()
+        {
+            string screenshotsFolder;
+            _liveScreenshotPaths.Clear();
+            if(_currentConversation == null)
+            {
+                return;
+            }
+            else 
+            {
+                screenshotsFolder = Path.Combine(
+                _currentConversation.FolderPath,
+                "screenshots");
+            }
+            if (!Directory.Exists(screenshotsFolder))
+                return;
+            foreach (string imagePath in Directory.GetFiles(screenshotsFolder))
+            {
+                _liveScreenshotPaths.Add(imagePath);
+            }
+        }
         private void ConversationListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (ConversationListBox.SelectedItem is Conversation selectedConversation)
@@ -83,13 +126,42 @@ namespace ChatGPTWPF
 
                     AddMessage($"{Sender}: {message.Content}");
                 }
+                LoadScreenshotsin_Livescreenshotpaths();
+                _isLiveModeActive = false;
+                _liveTimer.Stop();
+
+                LiveToggleButton.Content = "Live Start";
+
+
             }
         }
         private void CreateNewConversation()
         {
+            string baseFolder = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Chats"
+            );
+
+            Directory.CreateDirectory(baseFolder);
+
+            string conversationFolder = Path.Combine(
+                baseFolder,
+                $"Chat_{DateTime.Now:yyyyMMdd_HHmmss}"
+            );
+
+            Directory.CreateDirectory(conversationFolder);
+
+            string screenshotsFolder = Path.Combine(
+                conversationFolder,
+                "screenshots"
+            );
+
+            Directory.CreateDirectory(screenshotsFolder);
+
             Conversation conversation = new Conversation
             {
-                Title = $"Neuer Chat {_conversations.Count + 1}"
+                Title = $"Neuer Chat {_conversations.Count + 1}",
+                FolderPath = conversationFolder
             };
 
             _conversations.Add(conversation);
@@ -100,9 +172,12 @@ namespace ChatGPTWPF
 
             _currentConversation = conversation;
 
+            _liveScreenshotPaths.Clear();
+
             ChatPanel.Children.Clear();
 
             AddMessage("System: Neuer Chat gestartet.");
+
             SaveConversations();
         }
         private void ShowSentScreenshots(List<string> imagePaths)
@@ -139,7 +214,7 @@ namespace ChatGPTWPF
                 };
                 Border border = new Border
                 {
-                    BorderBrush = System.Windows.Media.Brushes.DarkRed,
+                    BorderBrush = System.Windows.Media.Brushes.DarkGray,
                     BorderThickness = new Thickness(3),
                     Margin = new Thickness(0, 0, 0, 12),
                     Child = image
@@ -165,21 +240,19 @@ namespace ChatGPTWPF
 
                 InputTextBox.Clear();
 
-                List<string> relevantImages;
+                List<string> relevantImages = new List<string>();
 
                 if (_isLiveModeActive)
                 {
                     relevantImages = SelectRelevantScreenshots();
-
+                    
                 }
-                else
+                else if(!_Justchatting)
                 {
-                    string imagePath = _screenService.CaptureScreen();
+                    string imagePath = _screenService.CaptureScreen(GetCurrentScreenshotsFolder(), GetSelectedScreen());
 
-                    relevantImages = new List<string>
-            {
-                imagePath
-            };
+                    relevantImages = new List<string> {imagePath};
+                    
                 }
                 ShowSentScreenshots(relevantImages);
                 if (_currentConversation != null)
@@ -223,8 +296,10 @@ namespace ChatGPTWPF
             TextBlock message = new TextBlock
             {
                 Text = text,
-                Margin = new Thickness(5),
-                TextWrapping = TextWrapping.Wrap
+                Foreground = System.Windows.Media.Brushes.White,
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10)
             };
 
             ChatPanel.Children.Add(message);
@@ -253,7 +328,7 @@ namespace ChatGPTWPF
        
         private async void LiveTimer_Tick(object? sender, EventArgs e)
         {
-            string imagePath = _screenService.CaptureScreen();
+            string imagePath = _screenService.CaptureScreen(GetCurrentScreenshotsFolder(), GetSelectedScreen());
 
             _liveScreenshotPaths.Add(imagePath);
 
@@ -266,7 +341,22 @@ namespace ChatGPTWPF
 
             
         }
+        private string GetCurrentScreenshotsFolder()
+        {
+            if (_currentConversation == null)
+            {
+                CreateNewConversation();
+            }
 
+            string screenshotsFolder = Path.Combine(
+                _currentConversation!.FolderPath,
+                "screenshots"
+            );
+
+            Directory.CreateDirectory(screenshotsFolder);
+
+            return screenshotsFolder;
+        }
         private List<string> SelectRelevantScreenshots()
         {
             if (_liveScreenshotPaths.Count <= MaxImagesToSend)
@@ -382,5 +472,59 @@ namespace ChatGPTWPF
                 SaveConversations();
             }
         }
+
+        private void saveJustchattingsetting()
+        {
+            AppSettings settings = new AppSettings
+            {
+                JustChatting = _Justchatting
+            };
+
+            string json =
+                JsonSerializer.Serialize(settings);
+
+            File.WriteAllText(_settingsPath, json);
+        }
+        private void loadJustchattingsetting()
+        {
+
+            if (!File.Exists(_settingsPath))
+                return;
+
+            string json =
+                File.ReadAllText(_settingsPath);
+
+            AppSettings? settings =
+                JsonSerializer.Deserialize<AppSettings>(json);
+
+            if (settings != null)
+            {
+                _Justchatting = settings.JustChatting;
+
+                JustChattingToggle.IsChecked = _Justchatting;
+            }
+
+        }
+        private void JustChatting_Checked(object sender, RoutedEventArgs e)
+        {
+            _Justchatting = true;
+            saveJustchattingsetting();
+        }
+        private void JustChatting_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _Justchatting = false;
+            saveJustchattingsetting();
+        }
+
+        private System.Windows.Forms.Screen GetSelectedScreen()
+        {
+            int selectedIndex = screens.SelectedIndex;
+
+            if (selectedIndex < 0)
+                selectedIndex = 0;
+
+            return System.Windows.Forms.Screen.AllScreens[selectedIndex];
+        }
+        
     }
 }

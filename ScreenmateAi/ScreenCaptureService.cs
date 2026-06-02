@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
 
@@ -7,13 +8,14 @@ namespace ChatGPTWPF.Services
 {
     public class ScreenCaptureService
     {
-       
-        public string CaptureScreen()
+
+        public string CaptureScreen(string targetFolder, Screen selectedScreen)
         {
-            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+            Directory.CreateDirectory(targetFolder);
+
+            Rectangle bounds = selectedScreen.Bounds;
 
             using Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height);
-
             using Graphics graphics = Graphics.FromImage(bitmap);
 
             graphics.CopyFromScreen(
@@ -24,7 +26,10 @@ namespace ChatGPTWPF.Services
                 bounds.Size
             );
 
-            string path = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png";
+            string path = Path.Combine(
+                targetFolder,
+                $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png"
+            );
 
             bitmap.Save(path, ImageFormat.Png);
 

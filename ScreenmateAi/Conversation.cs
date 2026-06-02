@@ -9,6 +9,7 @@ namespace ScreenmateAi
     {
         public string Title { get; set; } = "Neuer Chat";
         public bool IsRenaming { get; set; }
+        public string FolderPath { get; set; } = "";
         public List<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
 
         public override string ToString()
