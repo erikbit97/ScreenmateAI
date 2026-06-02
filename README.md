@@ -1,15 +1,16 @@
 # Screenmate AI
 
-Screenmate AI is a desktop assistant built with C# and WPF.
+Screenmate AI is a desktop assistant built with C# and WPF that combines ChatGPT with live screenshot analysis to provide contextual assistance directly from your desktop.
 
 ## Features
 
-- ChatGPT integration
-- Screenshot analysis
-- Multi-monitor support
-- Live Mode
-- Conversation history
-- Dark modern UI
+- 🤖 ChatGPT integration
+- 📸 Screenshot analysis
+- 🖥️ Multi-monitor support
+- 🔴 Live Mode
+- 💬 Conversation history
+- 🌙 Modern dark UI
+- 🔑 Secure API key login
 
 ## Status
 
@@ -19,8 +20,12 @@ Screenmate AI is a desktop assistant built with C# and WPF.
 
 - C#
 - WPF
-- OpenAI API
 - .NET
+- OpenAI API
 
-- Support me on Ko-fi: Ko-fi.com/erickgooglemailcom
+## Support
+
+If you would like to support the project:
+
+☕ Ko-fi: https://ko-fi.com/erickgooglemailcom
 
